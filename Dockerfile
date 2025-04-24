@@ -99,6 +99,12 @@ WORKDIR /opt/hemelb/python-tools
 RUN conda run -n gmy-tool pip install . && \
     cd ../geometry-tool && \
     conda run -n gmy-tool pip install '.[gui]'
+
+# -------------------------
+# Install gevent for web 
+# -------------------------
+    RUN apt-get update && apt-get install -y python3-pip && pip3 install gevent gevent-websocket
+
 # -------------------------
 # Provide data volume and working directory
 # -------------------------
