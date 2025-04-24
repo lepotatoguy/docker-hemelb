@@ -1,4 +1,5 @@
 FROM dorowu/ubuntu-desktop-lxde-vnc:focal
+LABEL "CORE_MAINTAINER"="Miguel O. Bernabeu (miguel.bernabeu@ed.ac.uk)"
 LABEL MAINTAINER="Joyanta J. Mondal (joyanta@udel.edu)"
 LABEL VERSION="2.0"
 
