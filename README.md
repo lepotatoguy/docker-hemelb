@@ -5,7 +5,7 @@ the HemeLB setup tool.
 
 Build the container with: `docker build -t hemelb .`
 
-Launch the container with: `docker run -i -t -p 6080:6080 -v <path_to_your_data>:/data  hemelb`,
+Launch the container with: `docker run -i -t -p 6080:80 -v <path_to_your_data>:/data  hemelb`,
 where `<path_to_your_data>` is the folder in the host system that you want to mount as `/data` in the container.
 
 The path of your data should include:
