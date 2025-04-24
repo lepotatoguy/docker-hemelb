@@ -1,61 +1,77 @@
-# Taking as base image a Ubuntu Desktop container with web-based noVNC connection enabled
-FROM dorowu/ubuntu-desktop-lxde-vnc
-LABEL "CORE_MAINTAINER"="Miguel O. Bernabeu (miguel.bernabeu@ed.ac.uk)"
-LABEL "MAINTAINER"="Joyanta J. Mondal (joyanta@udel.edu)"
-LABEL version="1.1"
+FROM dorowu/ubuntu-desktop-lxde-vnc:focal
+LABEL MAINTAINER="Joyanta J. Mondal (joyanta@udel.edu)"
+LABEL VERSION="2.0"
 
-##
-# Dependencies
-##
-# Ubuntu's OpenMPI is in Universe. Our base container runs Ubuntu 14.04, which doesn't provide cmake 3.2, add PPA repo
-RUN apt-get update && \
-    apt-get install -y software-properties-common && \
-    add-apt-repository "deb http://us.archive.ubuntu.com/ubuntu/ trusty universe" && \
-    add-apt-repository ppa:george-edison55/cmake-3.x && \
-    apt-get update
+ENV DEBIAN_FRONTEND=noninteractive
+ENV CONDA_DIR=/opt/conda
+ENV PATH=$CONDA_DIR/bin:$PATH
 
-# CppUnit fails to compile if downloaded by HemeLB's CMake, install it system-wide
-RUN apt-get install -y git cmake libcppunit-dev libcgal-dev python-wxtools python-wxversion swig openmpi-bin libopenmpi-dev freeglut3-dev
-RUN pip install cython numpy PyYAML
+# -------------------------
+# Install system dependencies
+# -------------------------
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget curl git sudo gnupg2 software-properties-common \
+    build-essential cmake cmake-curses-gui \
+    libopenmpi-dev openmpi-bin \
+    libtinyxml-dev libboost-all-dev libcgal-dev \
+    ca-certificates apt-transport-https lsb-release \
+    xz-utils && \
+    rm -rf /var/lib/apt/lists/*
 
-##
-# Download and install VMTK
-##
-WORKDIR /tmp
-RUN git clone https://github.com/vmtk/vmtk.git
-RUN mkdir vmtk-build && \
-    cd vmtk-build && \
-    cmake ../vmtk && \
-    make
-# The following two ENV statements are NOT concatenated as the setting of VMTKHOME isn't visible until the end of the command.
-ENV VMTKHOME=/tmp/vmtk-build/Install
-ENV PATH=$VMTKHOME/bin:$PATH \
-    LD_LIBRARY_PATH=$VMTKHOME/lib:$LD_LIBRARY_PATH \
-    PYTHONPATH=$VMTKHOME/lib/python2.7/site-packages:$PYTHONPATH
+# -------------------------
+# Install Anaconda (Python 3.8.20)
+# -------------------------
+RUN wget https://repo.anaconda.com/archive/Anaconda3-2023.09-1-Linux-x86_64.sh -O anaconda.sh && \
+    bash anaconda.sh -b -p $CONDA_DIR && \
+    rm anaconda.sh && \
+    $CONDA_DIR/bin/conda clean -afy
 
-##
-# Download and install HemeLB
-##
-WORKDIR /tmp
-RUN git clone https://github.com/hemelb-codes/hemelb.git
-RUN mkdir hemelb/build && \
-    cd hemelb/build && \
-    cmake .. -DHEMELB_STEERING_LIB=none -DHEMELB_USE_SSE3=ON && \
-    make
+# -------------------------
+# Fix Chrome GPG and install Chrome
+# -------------------------
+RUN curl -fsSL https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg && \
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" \
+    > /etc/apt/sources.list.d/google-chrome.list && \
+    apt-get update && apt-get install -y google-chrome-stable && \
+    rm -rf /var/lib/apt/lists/*
 
-##
-# Configure the setup tool
-##
-# Build the required python components
-WORKDIR /tmp
-RUN cd hemelb/Tools && \
-    python setup.py build_ext --inplace && \
-    cd setuptool && \
-    python setup.py build_ext --inplace
+# -------------------------
+# Clone and build HemeLB
+# -------------------------
+WORKDIR /opt
+RUN git clone https://github.com/lepotatoguy/hemelb.git && \
+    cd hemelb && \
+    git checkout 5647f6d && \
+    mkdir build && cd build && \
+    cmake .. && \
+    make && \
+    ln -s /opt/hemelb/build/hemelb /usr/local/bin/hemelb
 
-# Install the setup tool scripts and set environment variables
-ENV PYTHONPATH="/tmp/hemelb/Tools:/tmp/hemelb/Tools/setuptool:$PYTHONPATH"
-RUN cp /tmp/hemelb/Tools/setuptool/scripts/* /usr/local/bin
+# -------------------------
+# Build geometry-tool and Python environment
+# -------------------------
+WORKDIR /opt/hemelb/Tools/geometry-tool
+COPY hemelb-spec-2024-12-06.txt conda-environment.yml ./
+RUN conda env create -f conda-environment.yml && \
+    echo "source activate gmy-tool" >> ~/.bashrc && \
+    conda run -n gmy-tool conda install --yes --file hemelb-spec-2024-12-06.txt
 
-# Create a mount point for data
+# -------------------------
+# Install HemeLB python-tools and GUI geometry tool
+# -------------------------
+WORKDIR /opt/hemelb/Tools/python-tools
+RUN conda run -n gmy-tool pip install . && \
+    cd ../geometry-tool && \
+    conda run -n gmy-tool pip install '.[gui]'
+
+# -------------------------
+# Environment setup
+# -------------------------
+ENV PATH="/opt/hemelb/Tools/geometry-tool:$PATH"
+ENV PYTHONPATH="/opt/hemelb/Tools/python-tools:/opt/hemelb/Tools/geometry-tool:$PYTHONPATH"
+
+# -------------------------
+# Provide data volume and working directory
+# -------------------------
 VOLUME /data
+WORKDIR /data
