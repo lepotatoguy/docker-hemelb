@@ -1,6 +1,8 @@
 # Taking as base image a Ubuntu Desktop container with web-based noVNC connection enabled
 FROM dorowu/ubuntu-desktop-lxde-vnc
-MAINTAINER Miguel O. Bernabeu (miguel.bernabeu@ed.ac.uk)
+LABEL "CORE_MAINTAINER"="Miguel O. Bernabeu (miguel.bernabeu@ed.ac.uk)"
+LABEL "MAINTAINER"="Joyanta J. Mondal (joyanta@udel.edu)"
+LABEL version="1.1"
 
 ##
 # Dependencies
@@ -35,7 +37,7 @@ ENV PATH=$VMTKHOME/bin:$PATH \
 # Download and install HemeLB
 ##
 WORKDIR /tmp
-RUN git clone https://github.com/UCL/hemelb.git
+RUN git clone https://github.com/hemelb-codes/hemelb.git
 RUN mkdir hemelb/build && \
     cd hemelb/build && \
     cmake .. -DHEMELB_STEERING_LIB=none -DHEMELB_USE_SSE3=ON && \
