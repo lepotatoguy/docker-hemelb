@@ -83,9 +83,6 @@ RUN cmake -DCMAKE_C_COMPILER=/usr/bin/gcc-13 \
 # Build only the ParMETIS external dependency
 RUN make dep_ParMETIS
 
-# OPTIONAL: Debug location of ParMETIS to verify build
-RUN find . -name "libparmetis.a" && find . -name "parmetis.h"
-
 # Re-run cmake now that ParMETIS is available, then build HemeLB
 RUN cmake -DCMAKE_C_COMPILER=/usr/bin/gcc-13 \
 -DCMAKE_CXX_COMPILER=/usr/bin/g++-13 \
