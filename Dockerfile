@@ -63,10 +63,14 @@ RUN curl -fsSL https://dl.google.com/linux/linux_signing_key.pub -o /tmp/linux_s
 # Clone and build HemeLB
 # -------------------------
 WORKDIR /opt
-RUN git clone https://github.com/lepotatoguy/hemelb.git && \
+RUN git clone --branch development --single-branch https://github.com/lepotatoguy/hemelb.git && \
     cd hemelb && \
-    git checkout 5647f6d && \
+    git checkout 787b584 && \
     mkdir build && cd build
+
+# Patch geometry.h to include cstdint
+RUN sed -i '1i#include <cstdint>' /opt/hemelb/Code/io/formats/geometry.h
+
 
 # Set working directory for subsequent build steps
 WORKDIR /opt/hemelb/build
@@ -94,7 +98,7 @@ WORKDIR /opt/hemelb/geometry-tool
 # Install the environment
 RUN conda env create -f conda-environment.yml && \
         echo "source activate gmy-tool" >> ~/.bashrc && \
-        bash -c "source activate gmy-tool && conda install --yes --file /opt/hemelb/hemelb-spec-2024-12-06.txt"
+        bash -c "source activate gmy-tool && conda install --yes --file /opt/hemelb/hemelb-geometry-python-env.txt"
     
 
 # -------------------------
